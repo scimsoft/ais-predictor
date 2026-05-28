@@ -2,17 +2,32 @@
 
 ## Cursor Cloud specific instructions
 
-This repository (`ais-predictor`) is currently in a **pre-development/bootstrapped state**. It contains only a `README.md` describing an application to predict collision possibilities at sea (likely using AIS — Automatic Identification System data).
 
-### Current state
+This is an AIS vessel tracking web application (React + TypeScript + Vite) that shows maritime vessels on a map using real-time AIS data.
 
-- No source code, frameworks, or dependencies exist yet.
-- No build system, linter, test framework, or package manager is configured.
-- No services need to be started.
+### Running the app
 
-### For future agents
+```bash
+npm run dev
+```
 
-Once the codebase has actual source code and dependencies:
-- Check the README.md and any added documentation for setup instructions.
-- Look for `package.json`, `requirements.txt`, `pyproject.toml`, `Cargo.toml`, or similar dependency manifests to determine the tech stack.
-- The update script (via `SetupVmEnvironment`) should be updated to install the project's dependencies.
+The dev server starts on port 5173 and exposes on all network interfaces by default (`server.host: true` in vite config), so it's accessible from other devices on the same network via the machine's IP.
+
+### Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_AIS_API_KEY` | No | AISstream.io API key. Without it, the app runs in demo mode with simulated vessels. |
+
+Create a `.env.local` file at the repo root to set the key locally.
+
+### Key commands
+
+See `package.json` scripts: `dev`, `build`, `lint`, `preview`.
+
+### Architecture notes
+
+- **Live mode**: Connects via WebSocket to `wss://stream.aisstream.io/v0/stream`. Messages arrive as binary Blobs in the browser and are decoded to JSON.
+- **Demo mode**: `MockAISService` generates 20 simulated vessels with periodic position updates.
+- The AISstream subscription uses `Apikey` (not `APIKey`) and a bounding box centered on the user's geolocation (or Rotterdam fallback).
+- `FilterMessageTypes: ["PositionReport"]` limits the stream to position updates only
