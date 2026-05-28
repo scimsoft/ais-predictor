@@ -1,4 +1,4 @@
-import type { Vessel, AISMessage } from "../types";
+import type { Vessel, AISMessage, AISDebugStats } from "../types";
 
 const AIS_STREAM_URL = "wss://stream.aisstream.io/v0/stream";
 
@@ -15,6 +15,15 @@ export class AISStreamService {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private staleTimer: ReturnType<typeof setInterval> | null = null;
 
+  // --- Debug instrumentation (used by the optional ?debug=1 overlay) ---
+  private stats: AISDebugStats = {
+    totalMessages: 0,
+    messageCounts: {},
+    shipTypeCounts: {},
+    vesselsWithType: 0,
+    vesselsWithoutType: 0,
+  };
+
   constructor(
     apiKey: string,
     lat: number,
@@ -27,6 +36,27 @@ export class AISStreamService {
     this.lng = lng;
     this.radius = radius;
     this.onUpdate = onUpdate;
+  }
+
+  getStats(): AISDebugStats {
+    let withType = 0;
+    let without = 0;
+    for (const v of this.vessels.values()) {
+      if (v.shipType && v.shipType > 0) withType++;
+      else without++;
+    }
+    return {
+      ...this.stats,
+      vesselsWithType: withType,
+      vesselsWithoutType: without,
+      messageCounts: { ...this.stats.messageCounts },
+      shipTypeCounts: { ...this.stats.shipTypeCounts },
+    };
+  }
+
+  private recordShipType(t: number | undefined) {
+    if (t == null) return;
+    this.stats.shipTypeCounts[t] = (this.stats.shipTypeCounts[t] ?? 0) + 1;
   }
 
   connect() {
@@ -68,7 +98,14 @@ export class AISStreamService {
         } else {
           text = event.data;
         }
+        this.stats.totalMessages++;
+        if (text.length < 2000) {
+          this.stats.lastRawSample = text;
+          this.stats.lastSampleAt = Date.now();
+        }
         const msg: AISMessage = JSON.parse(text);
+        const mt = msg?.MessageType ?? "(unknown)";
+        this.stats.messageCounts[mt] = (this.stats.messageCounts[mt] ?? 0) + 1;
         this.processMessage(msg);
       } catch {
         // ignore parse errors
@@ -98,6 +135,7 @@ export class AISStreamService {
     //     vessel, or create a partial entry if we have position metadata.
     if (MessageType === "ShipStaticData" && Message.ShipStaticData) {
       const sd = Message.ShipStaticData;
+      this.recordShipType(sd.Type);
       this.applyStaticData(mmsi, existing, {
         shipType: sd.Type,
         name: sd.Name,
@@ -111,6 +149,7 @@ export class AISStreamService {
 
     if (MessageType === "StaticDataReport" && Message.StaticDataReport) {
       const sd = Message.StaticDataReport;
+      this.recordShipType(sd.ReportB?.ShipType);
       this.applyStaticData(mmsi, existing, {
         shipType: sd.ReportB?.ShipType,
         name: sd.ReportA?.Name,
@@ -140,6 +179,7 @@ export class AISStreamService {
     const extended = Message.ExtendedClassBPositionReport;
     const inlineName = extended?.Name?.trim();
     const inlineType = extended?.Type;
+    if (inlineType != null) this.recordShipType(inlineType);
 
     const vessel: Vessel = {
       mmsi,

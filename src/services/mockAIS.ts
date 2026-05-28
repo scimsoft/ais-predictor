@@ -1,4 +1,4 @@
-import type { Vessel } from "../types";
+import type { Vessel, AISDebugStats } from "../types";
 
 type VesselUpdateCallback = (vessels: Map<number, Vessel>) => void;
 
@@ -140,5 +140,23 @@ export class MockAISService {
       clearInterval(this.interval);
       this.interval = null;
     }
+  }
+
+  getStats(): AISDebugStats {
+    let withType = 0;
+    let without = 0;
+    const shipTypeCounts: Record<number, number> = {};
+    for (const v of this.vessels.values()) {
+      if (v.shipType && v.shipType > 0) withType++;
+      else without++;
+      shipTypeCounts[v.shipType] = (shipTypeCounts[v.shipType] ?? 0) + 1;
+    }
+    return {
+      totalMessages: 0,
+      messageCounts: { "(demo mode — no live messages)": this.vessels.size },
+      shipTypeCounts,
+      vesselsWithType: withType,
+      vesselsWithoutType: without,
+    };
   }
 }

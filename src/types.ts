@@ -20,6 +20,24 @@ interface PositionFields {
   UserID?: number;
 }
 
+export interface AISDebugStats {
+  // Total raw messages received from the websocket
+  totalMessages: number;
+  // Counts keyed by AISstream's MessageType discriminator
+  // (e.g. PositionReport, ShipStaticData, StandardClassBPositionReport, …)
+  messageCounts: Record<string, number>;
+  // Distribution of every distinct ship-type code observed (after a static
+  // data message OR an inline Type from ExtendedClassBPositionReport)
+  shipTypeCounts: Record<number, number>;
+  // Vessels currently tracked, broken down by whether we have a non-zero
+  // ship type for them yet.
+  vesselsWithType: number;
+  vesselsWithoutType: number;
+  // The most recent raw message text (truncated) for at-a-glance inspection
+  lastRawSample?: string;
+  lastSampleAt?: number;
+}
+
 export interface AISMessage {
   MessageType: string;
   MetaData: {
