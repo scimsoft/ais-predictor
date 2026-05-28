@@ -3,7 +3,8 @@ import type { ShipCategory } from "../types";
 
 const LEGEND_CATEGORIES: ShipCategory[] = [
   "cargo", "tanker", "passenger", "fishing", "tug",
-  "sailing", "pleasure", "highspeed", "military", "unknown",
+  "sailing", "pleasure", "highspeed", "military",
+  "service", "wig", "other", "unknown",
 ];
 
 export function MapLegend() {

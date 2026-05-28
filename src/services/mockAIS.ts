@@ -25,7 +25,9 @@ const SHIP_NAMES = [
   "STORM PETREL",
 ];
 
-const SHIP_TYPES = [30, 36, 37, 60, 70, 71, 72, 80, 81, 40];
+// A spread of ITU AIS ship-type codes covering fishing, sailing/pleasure,
+// passenger, cargo, tanker, HSC plus the port-service / other-type buckets.
+const SHIP_TYPES = [30, 36, 37, 60, 70, 71, 72, 80, 81, 40, 50, 52, 55, 90];
 const DESTINATIONS = [
   "ROTTERDAM",
   "SINGAPORE",
