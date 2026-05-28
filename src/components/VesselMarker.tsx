@@ -2,22 +2,35 @@ import { Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import type { Vessel } from "../types";
 import { getShipCategory, getShipCategoryLabel, SHIP_COLORS } from "../types";
+import type { CollisionRisk } from "../services/collisionDetection";
 
-function createVesselIcon(vessel: Vessel): L.DivIcon {
+function createVesselIcon(vessel: Vessel, risk?: CollisionRisk): L.DivIcon {
   const cat = getShipCategory(vessel.shipType);
   const color = SHIP_COLORS[cat];
   const rotation = vessel.heading || vessel.cog || 0;
+  const isHighRisk = risk?.riskLevel === "high";
+  const isMediumRisk = risk?.riskLevel === "medium";
+
+  const size = isHighRisk ? 32 : isMediumRisk ? 28 : 24;
+  const strokeColor = isHighRisk ? "#ff0000" : isMediumRisk ? "#ff9800" : "#fff";
+  const strokeWidth = isHighRisk ? 2.5 : isMediumRisk ? 2 : 1.5;
+  const pulseRing = isHighRisk
+    ? `<div class="vessel-risk-pulse high"></div>`
+    : isMediumRisk
+      ? `<div class="vessel-risk-pulse medium"></div>`
+      : "";
 
   return L.divIcon({
     className: "vessel-icon",
-    html: `<div style="transform: rotate(${rotation}deg); display: flex; align-items: center; justify-content: center;">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-        <path d="M12 2 L18 20 L12 16 L6 20 Z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+    html: `<div style="transform: rotate(${rotation}deg); display: flex; align-items: center; justify-content: center; position: relative;">
+      ${pulseRing}
+      <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2 L18 20 L12 16 L6 20 Z" fill="${color}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>
       </svg>
     </div>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -12],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
   });
 }
 
@@ -32,18 +45,20 @@ interface Props {
   vessel: Vessel;
   selected: boolean;
   onSelect: (mmsi: number) => void;
+  risk?: CollisionRisk;
 }
 
-export function VesselMarker({ vessel, selected, onSelect }: Props) {
+export function VesselMarker({ vessel, selected, onSelect, risk }: Props) {
   const cat = getShipCategory(vessel.shipType);
   const color = SHIP_COLORS[cat];
+  const isRisk = risk && risk.riskLevel !== "none";
 
   return (
     <Marker
       position={[vessel.lat, vessel.lng]}
-      icon={createVesselIcon(vessel)}
+      icon={createVesselIcon(vessel, risk)}
       eventHandlers={{ click: () => onSelect(vessel.mmsi) }}
-      zIndexOffset={selected ? 1000 : 0}
+      zIndexOffset={selected ? 1000 : isRisk ? 500 : 0}
     >
       <Popup>
         <div className="vessel-popup">
@@ -53,6 +68,12 @@ export function VesselMarker({ vessel, selected, onSelect }: Props) {
               {getShipCategoryLabel(cat)}
             </span>
           </div>
+          {isRisk && (
+            <div className={`vessel-risk-banner ${risk.riskLevel}`}>
+              ⚠️ {risk.riskLevel === "high" ? "Collision risk" : "Close approach"} —
+              CPA {risk.cpa.toFixed(2)} nm in {risk.tcpa.toFixed(0)} min
+            </div>
+          )}
           <table className="vessel-popup-table">
             <tbody>
               <tr><td>MMSI</td><td>{vessel.mmsi}</td></tr>

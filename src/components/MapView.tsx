@@ -1,6 +1,7 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { Vessel } from "../types";
+import type { CollisionRisk } from "../services/collisionDetection";
 import { VesselMarker } from "./VesselMarker";
 import { useEffect } from "react";
 
@@ -30,11 +31,12 @@ interface Props {
   lat: number;
   lng: number;
   vessels: Map<number, Vessel>;
+  risks: Map<number, CollisionRisk>;
   selectedMmsi: number | null;
   onSelect: (mmsi: number) => void;
 }
 
-export function MapView({ lat, lng, vessels, selectedMmsi, onSelect }: Props) {
+export function MapView({ lat, lng, vessels, risks, selectedMmsi, onSelect }: Props) {
   const selectedVessel = selectedMmsi ? vessels.get(selectedMmsi) ?? null : null;
 
   return (
@@ -59,6 +61,7 @@ export function MapView({ lat, lng, vessels, selectedMmsi, onSelect }: Props) {
           vessel={v}
           selected={v.mmsi === selectedMmsi}
           onSelect={onSelect}
+          risk={risks.get(v.mmsi)}
         />
       ))}
 

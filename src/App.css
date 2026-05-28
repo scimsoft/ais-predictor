@@ -119,6 +119,18 @@ body,
   font-weight: 600;
 }
 
+.status-risk {
+  color: #f44336;
+  font-weight: 600;
+  font-size: 12px;
+  animation: risk-blink 2s ease-in-out infinite;
+}
+
+@keyframes risk-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 /* ── Map ────────────────────────────────────────── */
 .map-container {
   flex: 1;
@@ -173,6 +185,102 @@ body,
 .vessel-icon {
   background: none !important;
   border: none !important;
+}
+
+/* ── Collision Risk Pulse ──────────────────────── */
+.vessel-risk-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  animation: risk-pulse 1.5s ease-out infinite;
+  pointer-events: none;
+}
+
+.vessel-risk-pulse.high {
+  background: rgba(255, 0, 0, 0.3);
+  border: 2px solid rgba(255, 0, 0, 0.6);
+}
+
+.vessel-risk-pulse.medium {
+  background: rgba(255, 152, 0, 0.2);
+  border: 2px solid rgba(255, 152, 0, 0.5);
+}
+
+@keyframes risk-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* ── Map Legend ──────────────────────────────────── */
+.map-legend {
+  position: absolute;
+  bottom: 24px;
+  left: 12px;
+  z-index: 500;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 11px;
+  max-width: 160px;
+  opacity: 0.92;
+}
+
+.legend-title {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.risk-high-swatch {
+  background: #f44336 !important;
+  border: 2px solid #d32f2f;
+  border-radius: 50%;
+}
+
+.risk-medium-swatch {
+  background: #ff9800 !important;
+  border: 2px solid #e65100;
+  border-radius: 50%;
+}
+
+.legend-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
 }
 
 /* ── Panel Toggle ───────────────────────────────── */
@@ -278,6 +386,21 @@ body,
   border-left: 3px solid var(--accent);
 }
 
+.vessel-list-item.risk-high {
+  background: rgba(255, 0, 0, 0.08);
+  border-left: 3px solid #f44336;
+}
+
+.vessel-list-item.risk-medium {
+  background: rgba(255, 152, 0, 0.08);
+  border-left: 3px solid #ff9800;
+}
+
+.risk-icon {
+  margin-right: 4px;
+  font-size: 10px;
+}
+
 .vessel-color-dot {
   width: 10px;
   height: 10px;
@@ -358,6 +481,27 @@ body,
   color: #64748b;
   padding-right: 12px;
   white-space: nowrap;
+}
+
+/* ── Risk Banner in Popup ──────────────────────── */
+.vessel-risk-banner {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.vessel-risk-banner.high {
+  background: rgba(255, 0, 0, 0.12);
+  color: #d32f2f;
+  border: 1px solid rgba(255, 0, 0, 0.3);
+}
+
+.vessel-risk-banner.medium {
+  background: rgba(255, 152, 0, 0.12);
+  color: #e65100;
+  border: 1px solid rgba(255, 152, 0, 0.3);
 }
 
 /* ── Scrollbar ──────────────────────────────────── */
