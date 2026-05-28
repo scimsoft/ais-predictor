@@ -43,7 +43,7 @@ export class AISStreamService {
             [this.lat + this.radius, this.lng + this.radius],
           ],
         ],
-        FilterMessageTypes: ["PositionReport"],
+        FilterMessageTypes: ["PositionReport", "ShipStaticData"],
       };
       this.ws?.send(JSON.stringify(subscriptionMsg));
     };
@@ -79,12 +79,53 @@ export class AISStreamService {
     if (!MetaData) return;
 
     const mmsi = MetaData.MMSI;
+    const existing = this.vessels.get(mmsi);
+
+    // Handle ShipStaticData messages (vessel type, name, destination)
+    if (Message?.ShipStaticData) {
+      if (existing) {
+        if (Message.ShipStaticData.Type) {
+          existing.shipType = Message.ShipStaticData.Type;
+        }
+        if (Message.ShipStaticData.Name?.trim()) {
+          existing.name = Message.ShipStaticData.Name.trim();
+        }
+        if (Message.ShipStaticData.Destination?.trim()) {
+          existing.destination = Message.ShipStaticData.Destination.trim();
+        }
+        existing.lastUpdate = Date.now();
+        this.vessels.set(mmsi, existing);
+        this.onUpdate(new Map(this.vessels));
+      } else {
+        // Static data for a vessel we haven't seen yet — store partial entry
+        const lat = MetaData.latitude ?? MetaData.Latitude;
+        const lng = MetaData.longitude ?? MetaData.Longitude;
+        if (lat && lng) {
+          const vessel: Vessel = {
+            mmsi,
+            name: Message.ShipStaticData.Name?.trim() || `MMSI ${mmsi}`,
+            lat,
+            lng,
+            cog: 0,
+            sog: 0,
+            heading: 0,
+            shipType: Message.ShipStaticData.Type ?? 0,
+            destination: Message.ShipStaticData.Destination?.trim() || "",
+            lastUpdate: Date.now(),
+          };
+          this.vessels.set(mmsi, vessel);
+          this.onUpdate(new Map(this.vessels));
+        }
+      }
+      return;
+    }
+
+    // Handle PositionReport messages
     const lat = MetaData.latitude ?? MetaData.Latitude;
     const lng = MetaData.longitude ?? MetaData.Longitude;
 
     if (!lat || !lng) return;
 
-    const existing = this.vessels.get(mmsi);
     const vessel: Vessel = {
       mmsi,
       name:
@@ -97,12 +138,8 @@ export class AISStreamService {
       sog: Message?.PositionReport?.Sog ?? existing?.sog ?? 0,
       heading:
         Message?.PositionReport?.TrueHeading ?? existing?.heading ?? 0,
-      shipType:
-        Message?.ShipStaticData?.Type ?? existing?.shipType ?? 0,
-      destination:
-        Message?.ShipStaticData?.Destination?.trim() ||
-        existing?.destination ||
-        "",
+      shipType: existing?.shipType ?? 0,
+      destination: existing?.destination || "",
       lastUpdate: Date.now(),
     };
 
