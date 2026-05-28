@@ -1,0 +1,402 @@
+/* ── Reset & Base ────────────────────────────────── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #0f172a;
+  --bg-panel: #1e293b;
+  --bg-item: #334155;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-dim: #0ea5e9;
+  --border: #475569;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --radius: 8px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+/* ── App Layout ─────────────────────────────────── */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Loading Screen ─────────────────────────────── */
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: var(--text-muted);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Status Bar ─────────────────────────────────── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  z-index: 1000;
+  flex-shrink: 0;
+}
+
+.status-left,
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
+  flex-shrink: 0;
+}
+
+.status-dot.connected {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+
+.status-text {
+  color: var(--text-muted);
+}
+
+.status-warning {
+  color: var(--warning);
+  font-size: 12px;
+}
+
+.status-count {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Map ────────────────────────────────────────── */
+.map-container {
+  flex: 1;
+  height: 100%;
+  z-index: 1;
+}
+
+/* ── User Position Marker ───────────────────────── */
+.user-position-marker {
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+.user-position-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.user-position-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  background: rgba(56, 189, 248, 0.3);
+  border-radius: 50%;
+  animation: pulse 2s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3);
+    opacity: 0;
+  }
+}
+
+/* ── Vessel Icon ────────────────────────────────── */
+.vessel-icon {
+  background: none !important;
+  border: none !important;
+}
+
+/* ── Panel Toggle ───────────────────────────────── */
+.panel-toggle {
+  position: absolute;
+  right: 320px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 500;
+  width: 24px;
+  height: 48px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: var(--radius) 0 0 var(--radius);
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: right 0.3s ease, background 0.2s;
+}
+
+.panel-toggle:not(.open) {
+  right: 0;
+  border-right: 1px solid var(--border);
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.panel-toggle:hover {
+  background: var(--bg-item);
+}
+
+/* ── Vessel List Panel ──────────────────────────── */
+.vessel-list {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 400;
+}
+
+.vessel-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.vessel-list-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.vessel-count {
+  background: var(--accent-dim);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.vessel-list-items {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.vessel-list-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.vessel-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+.vessel-list-item:hover {
+  background: var(--bg-item);
+}
+
+.vessel-list-item.selected {
+  background: rgba(56, 189, 248, 0.12);
+  border-left: 3px solid var(--accent);
+}
+
+.vessel-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.vessel-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vessel-item-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vessel-item-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.vessel-item-bearing {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ── Vessel Popup ───────────────────────────────── */
+.vessel-popup {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  min-width: 180px;
+}
+
+.vessel-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 2px solid;
+}
+
+.vessel-popup-header strong {
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.vessel-type-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.vessel-popup-table {
+  width: 100%;
+  font-size: 12px;
+  border-collapse: collapse;
+}
+
+.vessel-popup-table td {
+  padding: 2px 0;
+  color: #334155;
+}
+
+.vessel-popup-table td:first-child {
+  font-weight: 600;
+  color: #64748b;
+  padding-right: 12px;
+  white-space: nowrap;
+}
+
+/* ── Scrollbar ──────────────────────────────────── */
+.vessel-list-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vessel-list-items::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.vessel-list-items::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+/* ── Responsive ─────────────────────────────────── */
+@media (max-width: 768px) {
+  .vessel-list {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 40%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  .panel-toggle {
+    right: 50%;
+    top: auto;
+    bottom: 40%;
+    transform: translateX(50%) rotate(90deg);
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  .panel-toggle:not(.open) {
+    bottom: 0;
+  }
+}
