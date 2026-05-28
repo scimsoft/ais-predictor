@@ -11,6 +11,15 @@ export interface Vessel {
   lastUpdate: number; // timestamp ms
 }
 
+interface PositionFields {
+  Cog?: number;
+  Sog?: number;
+  TrueHeading?: number;
+  Latitude?: number;
+  Longitude?: number;
+  UserID?: number;
+}
+
 export interface AISMessage {
   MessageType: string;
   MetaData: {
@@ -24,19 +33,26 @@ export interface AISMessage {
     time_utc?: string;
   };
   Message: {
-    PositionReport?: {
-      Cog: number;
-      Sog: number;
-      TrueHeading: number;
-      NavigationalStatus: number;
-      UserID: number;
-      Latitude?: number;
-      Longitude?: number;
-    };
+    // Class A position (msg type 1/2/3)
+    PositionReport?: PositionFields & { NavigationalStatus?: number };
+    // Class A static data (msg type 5)
     ShipStaticData?: {
-      Type: number;
-      Destination: string;
-      Name: string;
+      Type?: number;
+      Destination?: string;
+      Name?: string;
+    };
+    // Class B basic position (msg type 18)
+    StandardClassBPositionReport?: PositionFields;
+    // Class B extended position (msg type 19) — includes Name + Type
+    ExtendedClassBPositionReport?: PositionFields & {
+      Name?: string;
+      Type?: number;
+    };
+    // Class B static data (msg type 24, split into Part A / Part B)
+    StaticDataReport?: {
+      PartNumber?: boolean | number;
+      ReportA?: { Name?: string; Valid?: boolean };
+      ReportB?: { ShipType?: number; CallSign?: string; Valid?: boolean };
     };
   };
 }

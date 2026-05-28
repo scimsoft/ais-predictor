@@ -43,7 +43,19 @@ export class AISStreamService {
             [this.lat + this.radius, this.lng + this.radius],
           ],
         ],
-        FilterMessageTypes: ["PositionReport", "ShipStaticData"],
+        // Include Class B traffic and both static-data variants so vessels
+        // can be color-coded by type. Class A vessels broadcast position
+        // via PositionReport (1/2/3) and static via ShipStaticData (5).
+        // Class B vessels broadcast position via StandardClassBPositionReport
+        // (18) / ExtendedClassBPositionReport (19, includes Type) and static
+        // via StaticDataReport (24, Type lives in ReportB.ShipType).
+        FilterMessageTypes: [
+          "PositionReport",
+          "ShipStaticData",
+          "StandardClassBPositionReport",
+          "ExtendedClassBPositionReport",
+          "StaticDataReport",
+        ],
       };
       this.ws?.send(JSON.stringify(subscriptionMsg));
     };
@@ -75,76 +87,137 @@ export class AISStreamService {
   }
 
   private processMessage(msg: AISMessage) {
-    const { MetaData, Message } = msg;
-    if (!MetaData) return;
+    const { MetaData, Message, MessageType } = msg;
+    if (!MetaData || !Message) return;
 
     const mmsi = MetaData.MMSI;
+    if (!mmsi) return;
     const existing = this.vessels.get(mmsi);
 
-    // Handle ShipStaticData messages (vessel type, name, destination)
-    if (Message?.ShipStaticData) {
-      if (existing) {
-        if (Message.ShipStaticData.Type) {
-          existing.shipType = Message.ShipStaticData.Type;
-        }
-        if (Message.ShipStaticData.Name?.trim()) {
-          existing.name = Message.ShipStaticData.Name.trim();
-        }
-        if (Message.ShipStaticData.Destination?.trim()) {
-          existing.destination = Message.ShipStaticData.Destination.trim();
-        }
-        existing.lastUpdate = Date.now();
-        this.vessels.set(mmsi, existing);
-        this.onUpdate(new Map(this.vessels));
-      } else {
-        // Static data for a vessel we haven't seen yet — store partial entry
-        const lat = MetaData.latitude ?? MetaData.Latitude;
-        const lng = MetaData.longitude ?? MetaData.Longitude;
-        if (lat && lng) {
-          const vessel: Vessel = {
-            mmsi,
-            name: Message.ShipStaticData.Name?.trim() || `MMSI ${mmsi}`,
-            lat,
-            lng,
-            cog: 0,
-            sog: 0,
-            heading: 0,
-            shipType: Message.ShipStaticData.Type ?? 0,
-            destination: Message.ShipStaticData.Destination?.trim() || "",
-            lastUpdate: Date.now(),
-          };
-          this.vessels.set(mmsi, vessel);
-          this.onUpdate(new Map(this.vessels));
-        }
-      }
+    // --- Static-data messages: update type/name/destination on existing
+    //     vessel, or create a partial entry if we have position metadata.
+    if (MessageType === "ShipStaticData" && Message.ShipStaticData) {
+      const sd = Message.ShipStaticData;
+      this.applyStaticData(mmsi, existing, {
+        shipType: sd.Type,
+        name: sd.Name,
+        destination: sd.Destination,
+        metaLat: MetaData.latitude ?? MetaData.Latitude,
+        metaLng: MetaData.longitude ?? MetaData.Longitude,
+        metaName: MetaData.ShipName,
+      });
       return;
     }
 
-    // Handle PositionReport messages
-    const lat = MetaData.latitude ?? MetaData.Latitude;
-    const lng = MetaData.longitude ?? MetaData.Longitude;
+    if (MessageType === "StaticDataReport" && Message.StaticDataReport) {
+      const sd = Message.StaticDataReport;
+      this.applyStaticData(mmsi, existing, {
+        shipType: sd.ReportB?.ShipType,
+        name: sd.ReportA?.Name,
+        metaLat: MetaData.latitude ?? MetaData.Latitude,
+        metaLng: MetaData.longitude ?? MetaData.Longitude,
+        metaName: MetaData.ShipName,
+      });
+      return;
+    }
 
-    if (!lat || !lng) return;
+    // --- Position-bearing messages: PositionReport (Class A 1/2/3),
+    //     StandardClassBPositionReport (18), ExtendedClassBPositionReport
+    //     (19, also carries Name + Type so we can color immediately).
+    const positionBody =
+      Message.PositionReport ??
+      Message.StandardClassBPositionReport ??
+      Message.ExtendedClassBPositionReport;
+    if (!positionBody) return;
+
+    const lat =
+      positionBody.Latitude ?? MetaData.latitude ?? MetaData.Latitude;
+    const lng =
+      positionBody.Longitude ?? MetaData.longitude ?? MetaData.Longitude;
+    if (lat == null || lng == null) return;
+
+    // ExtendedClassBPositionReport may carry Name and Type inline.
+    const extended = Message.ExtendedClassBPositionReport;
+    const inlineName = extended?.Name?.trim();
+    const inlineType = extended?.Type;
 
     const vessel: Vessel = {
       mmsi,
       name:
+        inlineName ||
         MetaData.ShipName?.trim() ||
         existing?.name ||
         `MMSI ${mmsi}`,
       lat,
       lng,
-      cog: Message?.PositionReport?.Cog ?? existing?.cog ?? 0,
-      sog: Message?.PositionReport?.Sog ?? existing?.sog ?? 0,
-      heading:
-        Message?.PositionReport?.TrueHeading ?? existing?.heading ?? 0,
-      shipType: existing?.shipType ?? 0,
+      cog: positionBody.Cog ?? existing?.cog ?? 0,
+      sog: positionBody.Sog ?? existing?.sog ?? 0,
+      heading: positionBody.TrueHeading ?? existing?.heading ?? 0,
+      // Prefer an inline Type from Extended Class B over a previously known
+      // value of 0 (unknown), otherwise keep what we have.
+      shipType:
+        inlineType && inlineType > 0
+          ? inlineType
+          : existing?.shipType ?? 0,
       destination: existing?.destination || "",
       lastUpdate: Date.now(),
     };
 
     this.vessels.set(mmsi, vessel);
     this.onUpdate(new Map(this.vessels));
+  }
+
+  private applyStaticData(
+    mmsi: number,
+    existing: Vessel | undefined,
+    data: {
+      shipType?: number;
+      name?: string;
+      destination?: string;
+      metaLat?: number;
+      metaLng?: number;
+      metaName?: string;
+    }
+  ) {
+    const trimmedName = data.name?.trim();
+    const trimmedDest = data.destination?.trim();
+
+    if (existing) {
+      if (data.shipType && data.shipType > 0) {
+        existing.shipType = data.shipType;
+      }
+      if (trimmedName) {
+        existing.name = trimmedName;
+      }
+      if (trimmedDest) {
+        existing.destination = trimmedDest;
+      }
+      existing.lastUpdate = Date.now();
+      this.vessels.set(mmsi, existing);
+      this.onUpdate(new Map(this.vessels));
+      return;
+    }
+
+    // No prior vessel — only seed an entry if we have a position from
+    // metadata. AISstream's MetaData carries the last known lat/lng, so
+    // this lets static-data messages create a vessel before the first
+    // position report arrives.
+    if (data.metaLat != null && data.metaLng != null) {
+      const vessel: Vessel = {
+        mmsi,
+        name: trimmedName || data.metaName?.trim() || `MMSI ${mmsi}`,
+        lat: data.metaLat,
+        lng: data.metaLng,
+        cog: 0,
+        sog: 0,
+        heading: 0,
+        shipType: data.shipType ?? 0,
+        destination: trimmedDest || "",
+        lastUpdate: Date.now(),
+      };
+      this.vessels.set(mmsi, vessel);
+      this.onUpdate(new Map(this.vessels));
+    }
   }
 
   private startStaleCleanup() {
