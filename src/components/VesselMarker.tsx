@@ -10,23 +10,27 @@ function createVesselIcon(vessel: Vessel, risk?: CollisionRisk): L.DivIcon {
   const rotation = vessel.heading || vessel.cog || 0;
   const isHighRisk = risk?.riskLevel === "high";
   const isMediumRisk = risk?.riskLevel === "medium";
+  const isRisk = isHighRisk || isMediumRisk;
 
-  const size = isHighRisk ? 32 : isMediumRisk ? 28 : 24;
-  const strokeColor = isHighRisk ? "#ff0000" : isMediumRisk ? "#ff9800" : "#fff";
-  const strokeWidth = isHighRisk ? 2.5 : isMediumRisk ? 2 : 1.5;
-  const pulseRing = isHighRisk
-    ? `<div class="vessel-risk-pulse high"></div>`
+  const size = isHighRisk ? 44 : isMediumRisk ? 40 : 32;
+  const arrowSize = isRisk ? 20 : 16;
+
+  const riskRing = isHighRisk
+    ? `<div class="vessel-risk-ring high"></div>`
     : isMediumRisk
-      ? `<div class="vessel-risk-pulse medium"></div>`
+      ? `<div class="vessel-risk-ring medium"></div>`
       : "";
 
   return L.divIcon({
     className: "vessel-icon",
-    html: `<div style="transform: rotate(${rotation}deg); display: flex; align-items: center; justify-content: center; position: relative;">
-      ${pulseRing}
-      <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none">
-        <path d="M12 2 L18 20 L12 16 L6 20 Z" fill="${color}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>
-      </svg>
+    html: `<div class="vessel-marker-wrapper" style="width:${size}px;height:${size}px;">
+      ${riskRing}
+      <div class="vessel-marker-bg" style="background:${color};width:${size}px;height:${size}px;"></div>
+      <div class="vessel-marker-arrow" style="transform:rotate(${rotation}deg);">
+        <svg width="${arrowSize}" height="${arrowSize}" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2 L18 20 L12 15 L6 20 Z" fill="#fff" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>
+        </svg>
+      </div>
     </div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
