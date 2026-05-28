@@ -79,14 +79,32 @@ export class MockAISService {
   private generateInitialVessels() {
     for (let i = 0; i < this.count; i++) {
       const mmsi = 200000000 + Math.floor(Math.random() * 800000000);
-      const cog = randomInRange(0, 360);
+      let lat: number, lng: number, cog: number, sog: number;
+
+      if (i < 3) {
+        // First 3 vessels are on an approach course toward the user
+        const angle = randomInRange(0, 360);
+        const distDeg = randomInRange(0.3, 0.8);
+        lat = this.lat + Math.cos(angle * Math.PI / 180) * distDeg;
+        lng = this.lng + Math.sin(angle * Math.PI / 180) * distDeg;
+        // Point course toward user position
+        const bearingToUser = Math.atan2(this.lng - lng, this.lat - lat) * 180 / Math.PI;
+        cog = (bearingToUser + 360) % 360 + randomInRange(-5, 5);
+        sog = randomInRange(8, 16);
+      } else {
+        lat = this.lat + randomInRange(-this.radius, this.radius);
+        lng = this.lng + randomInRange(-this.radius, this.radius);
+        cog = randomInRange(0, 360);
+        sog = randomInRange(0, 18);
+      }
+
       const vessel: Vessel = {
         mmsi,
         name: SHIP_NAMES[i % SHIP_NAMES.length],
-        lat: this.lat + randomInRange(-this.radius, this.radius),
-        lng: this.lng + randomInRange(-this.radius, this.radius),
+        lat,
+        lng,
         cog,
-        sog: randomInRange(0, 18),
+        sog,
         heading: cog + randomInRange(-10, 10),
         shipType: SHIP_TYPES[Math.floor(Math.random() * SHIP_TYPES.length)],
         destination:
