@@ -4,7 +4,7 @@ import { AISStreamService } from "../services/aisStream";
 import { MockAISService } from "../services/mockAIS";
 
 const AIS_API_KEY = import.meta.env.VITE_AIS_API_KEY as string | undefined;
-const SEARCH_RADIUS = 0.5; // degrees (~55km)
+const SEARCH_RADIUS = 2; // degrees (~55km)
 
 export function useAIS(lat: number, lng: number, geoLoading: boolean) {
   const [vessels, setVessels] = useState<Map<number, Vessel>>(new Map());

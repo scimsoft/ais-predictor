@@ -36,20 +36,27 @@ export class AISStreamService {
 
     this.ws.onopen = () => {
       const subscriptionMsg = {
-        APIKey: this.apiKey,
+        Apikey: this.apiKey,
         BoundingBoxes: [
           [
             [this.lat - this.radius, this.lng - this.radius],
             [this.lat + this.radius, this.lng + this.radius],
           ],
         ],
+        FilterMessageTypes: ["PositionReport"],
       };
       this.ws?.send(JSON.stringify(subscriptionMsg));
     };
 
-    this.ws.onmessage = (event) => {
+    this.ws.onmessage = async (event) => {
       try {
-        const msg: AISMessage = JSON.parse(event.data);
+        let text: string;
+        if (event.data instanceof Blob) {
+          text = await event.data.text();
+        } else {
+          text = event.data;
+        }
+        const msg: AISMessage = JSON.parse(text);
         this.processMessage(msg);
       } catch {
         // ignore parse errors
@@ -69,22 +76,31 @@ export class AISStreamService {
 
   private processMessage(msg: AISMessage) {
     const { MetaData, Message } = msg;
-    const mmsi = MetaData.MMSI;
+    if (!MetaData) return;
 
-    if (!MetaData.latitude || !MetaData.longitude) return;
+    const mmsi = MetaData.MMSI;
+    const lat = MetaData.latitude ?? MetaData.Latitude;
+    const lng = MetaData.longitude ?? MetaData.Longitude;
+
+    if (!lat || !lng) return;
 
     const existing = this.vessels.get(mmsi);
     const vessel: Vessel = {
       mmsi,
-      name: MetaData.ShipName?.trim() || existing?.name || `MMSI ${mmsi}`,
-      lat: MetaData.latitude,
-      lng: MetaData.longitude,
-      cog: Message.PositionReport?.Cog ?? existing?.cog ?? 0,
-      sog: Message.PositionReport?.Sog ?? existing?.sog ?? 0,
-      heading: Message.PositionReport?.TrueHeading ?? existing?.heading ?? 0,
-      shipType: Message.ShipStaticData?.Type ?? existing?.shipType ?? 0,
+      name:
+        MetaData.ShipName?.trim() ||
+        existing?.name ||
+        `MMSI ${mmsi}`,
+      lat,
+      lng,
+      cog: Message?.PositionReport?.Cog ?? existing?.cog ?? 0,
+      sog: Message?.PositionReport?.Sog ?? existing?.sog ?? 0,
+      heading:
+        Message?.PositionReport?.TrueHeading ?? existing?.heading ?? 0,
+      shipType:
+        Message?.ShipStaticData?.Type ?? existing?.shipType ?? 0,
       destination:
-        Message.ShipStaticData?.Destination?.trim() ||
+        Message?.ShipStaticData?.Destination?.trim() ||
         existing?.destination ||
         "",
       lastUpdate: Date.now(),
@@ -97,7 +113,7 @@ export class AISStreamService {
   private startStaleCleanup() {
     this.staleTimer = setInterval(() => {
       const now = Date.now();
-      const staleThreshold = 10 * 60 * 1000; // 10 minutes
+      const staleThreshold = 10 * 60 * 1000;
       let changed = false;
       for (const [mmsi, vessel] of this.vessels) {
         if (now - vessel.lastUpdate > staleThreshold) {

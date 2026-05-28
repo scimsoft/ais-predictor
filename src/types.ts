@@ -15,11 +15,13 @@ export interface AISMessage {
   MessageType: string;
   MetaData: {
     MMSI: number;
-    MMSI_String: string;
-    ShipName: string;
-    latitude: number;
-    longitude: number;
-    time_utc: string;
+    MMSI_String?: string;
+    ShipName?: string;
+    latitude?: number;
+    longitude?: number;
+    Latitude?: number;
+    Longitude?: number;
+    time_utc?: string;
   };
   Message: {
     PositionReport?: {
@@ -28,6 +30,8 @@ export interface AISMessage {
       TrueHeading: number;
       NavigationalStatus: number;
       UserID: number;
+      Latitude?: number;
+      Longitude?: number;
     };
     ShipStaticData?: {
       Type: number;

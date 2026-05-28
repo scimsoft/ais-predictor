@@ -10,6 +10,7 @@ A real-time vessel tracking application that displays ships around your position
 - **Vessel Details** — Click any vessel for speed, course, heading, destination, and ship type
 - **Vessel List** — Sortable side panel with all nearby vessels
 - **Ship Classification** — Color-coded markers by vessel type (cargo, tanker, fishing, passenger, etc.)
+- **Mobile Friendly** — Responsive layout, accessible from phone on same network
 
 ## Getting Started
 
@@ -26,6 +27,19 @@ The app starts in **demo mode** with simulated vessels. To use live AIS data:
    VITE_AIS_API_KEY=your_api_key_here
    ```
 3. Restart the dev server
+
+### Access from your phone
+
+The dev server binds to all network interfaces. To open the app on your phone:
+
+1. Make sure your phone is on the **same Wi-Fi network** as your computer
+2. Find your computer's local IP address:
+   - **macOS**: `ipconfig getifaddr en0`
+   - **Windows**: `ipconfig` → look for IPv4 Address
+   - **Linux**: `hostname -I`
+3. On your phone's browser, go to `http://<your-computer-ip>:5173`
+
+> `localhost` only works on the device running the server — use the IP address for any other device.
 
 ## Tech Stack
 

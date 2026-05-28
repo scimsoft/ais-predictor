@@ -2,14 +2,31 @@
 
 ## Cursor Cloud specific instructions
 
-This is a greenfield repository (`ais-predictor`) for a maritime collision prediction application using AIS data. As of the initial setup, the repo contains only a `README.md` — no source code, build system, dependencies, or services have been added yet.
+This is an AIS vessel tracking web application (React + TypeScript + Vite) that shows maritime vessels on a map using real-time AIS data.
 
-### Current state
+### Running the app
 
-- **No language/framework chosen yet** — no `package.json`, `requirements.txt`, `Cargo.toml`, or equivalent.
-- **No services to start** — no backend, frontend, database, or Docker configuration.
-- **No tests or linting configured.**
+```bash
+npm run dev
+```
 
-### When code is added
+The dev server starts on port 5173 and exposes on all network interfaces by default (`server.host: true` in vite config), so it's accessible from other devices on the same network via the machine's IP.
 
-Once the first code and dependency files are committed, the update script (`SetupVmEnvironment`) should be revised to install those dependencies (e.g. `npm install`, `pip install -r requirements.txt`, etc.). Until then the update script is intentionally a no-op.
+### Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_AIS_API_KEY` | No | AISstream.io API key. Without it, the app runs in demo mode with simulated vessels. |
+
+Create a `.env.local` file at the repo root to set the key locally.
+
+### Key commands
+
+See `package.json` scripts: `dev`, `build`, `lint`, `preview`.
+
+### Architecture notes
+
+- **Live mode**: Connects via WebSocket to `wss://stream.aisstream.io/v0/stream`. Messages arrive as binary Blobs in the browser and are decoded to JSON.
+- **Demo mode**: `MockAISService` generates 20 simulated vessels with periodic position updates.
+- The AISstream subscription uses `Apikey` (not `APIKey`) and a bounding box centered on the user's geolocation (or Rotterdam fallback).
+- `FilterMessageTypes: ["PositionReport"]` limits the stream to position updates only.
