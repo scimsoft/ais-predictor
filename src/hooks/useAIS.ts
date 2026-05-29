@@ -11,7 +11,8 @@ const EMPTY_STATS: AISDebugStats = {
   messageCounts: {},
   shipTypeCounts: {},
   vesselsWithType: 0,
-  vesselsWithoutType: 0,
+  vesselsTypeZero: 0,
+  vesselsNoStaticYet: 0,
 };
 
 export function useAIS(

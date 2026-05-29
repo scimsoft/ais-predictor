@@ -21,8 +21,15 @@ export class AISStreamService {
     messageCounts: {},
     shipTypeCounts: {},
     vesselsWithType: 0,
-    vesselsWithoutType: 0,
+    vesselsTypeZero: 0,
+    vesselsNoStaticYet: 0,
   };
+  // MMSIs for which we've received at least one usable static-data message
+  // (ShipStaticData with Type defined, StaticDataReport Part B with Valid
+  // ReportB, or an ExtendedClassBPositionReport carrying an inline Type).
+  // Used to distinguish "vessel broadcasts Type=0" (genuinely unknown by
+  // the AIS protocol) from "we haven't seen static data for this vessel yet".
+  private mmsisWithStaticData = new Set<number>();
 
   constructor(
     apiKey: string,
@@ -40,23 +47,31 @@ export class AISStreamService {
 
   getStats(): AISDebugStats {
     let withType = 0;
-    let without = 0;
+    let typeZero = 0;
+    let noStaticYet = 0;
     for (const v of this.vessels.values()) {
-      if (v.shipType && v.shipType > 0) withType++;
-      else without++;
+      if (v.shipType && v.shipType > 0) {
+        withType++;
+      } else if (this.mmsisWithStaticData.has(v.mmsi)) {
+        typeZero++;
+      } else {
+        noStaticYet++;
+      }
     }
     return {
       ...this.stats,
       vesselsWithType: withType,
-      vesselsWithoutType: without,
+      vesselsTypeZero: typeZero,
+      vesselsNoStaticYet: noStaticYet,
       messageCounts: { ...this.stats.messageCounts },
       shipTypeCounts: { ...this.stats.shipTypeCounts },
     };
   }
 
-  private recordShipType(t: number | undefined) {
+  private recordShipType(mmsi: number, t: number | undefined) {
     if (t == null) return;
     this.stats.shipTypeCounts[t] = (this.stats.shipTypeCounts[t] ?? 0) + 1;
+    this.mmsisWithStaticData.add(mmsi);
   }
 
   connect() {
@@ -65,6 +80,7 @@ export class AISStreamService {
     this.ws = new WebSocket(AIS_STREAM_URL);
 
     this.ws.onopen = () => {
+      this.stats.connectedSince = Date.now();
       const subscriptionMsg = {
         Apikey: this.apiKey,
         BoundingBoxes: [
@@ -135,7 +151,9 @@ export class AISStreamService {
     //     vessel, or create a partial entry if we have position metadata.
     if (MessageType === "ShipStaticData" && Message.ShipStaticData) {
       const sd = Message.ShipStaticData;
-      this.recordShipType(sd.Type);
+      // ShipStaticData (Class A msg 5) always carries a Type field — record
+      // it even when it's 0, because that's a real "Not available" broadcast.
+      if (sd.Type != null) this.recordShipType(mmsi, sd.Type);
       this.applyStaticData(mmsi, existing, {
         shipType: sd.Type,
         name: sd.Name,
@@ -149,9 +167,22 @@ export class AISStreamService {
 
     if (MessageType === "StaticDataReport" && Message.StaticDataReport) {
       const sd = Message.StaticDataReport;
-      this.recordShipType(sd.ReportB?.ShipType);
+      // StaticDataReport (Class B msg 24) is split across two transmissions:
+      //   - Part A (PartNumber=0/false): carries Name in ReportA. ReportB is
+      //     present in the JSON but populated with default zeros and
+      //     Valid:false. We MUST NOT count its ShipType=0 as a real
+      //     broadcast — that would falsely inflate the Type=0 bucket.
+      //   - Part B (PartNumber=1/true): carries ShipType in ReportB with
+      //     Valid:true. That's the only case where ReportB.ShipType is real.
+      const isPartB = sd.PartNumber === true || sd.PartNumber === 1;
+      const reportBValid = sd.ReportB?.Valid !== false; // tolerate undefined
+      const realShipType =
+        isPartB && reportBValid ? sd.ReportB?.ShipType : undefined;
+
+      if (realShipType != null) this.recordShipType(mmsi, realShipType);
+
       this.applyStaticData(mmsi, existing, {
-        shipType: sd.ReportB?.ShipType,
+        shipType: realShipType,
         name: sd.ReportA?.Name,
         metaLat: MetaData.latitude ?? MetaData.Latitude,
         metaLng: MetaData.longitude ?? MetaData.Longitude,
@@ -179,7 +210,7 @@ export class AISStreamService {
     const extended = Message.ExtendedClassBPositionReport;
     const inlineName = extended?.Name?.trim();
     const inlineType = extended?.Type;
-    if (inlineType != null) this.recordShipType(inlineType);
+    if (inlineType != null) this.recordShipType(mmsi, inlineType);
 
     const vessel: Vessel = {
       mmsi,
