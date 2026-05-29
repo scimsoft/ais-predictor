@@ -53,6 +53,7 @@ export class MockAISService {
   private radius: number;
   private interval: ReturnType<typeof setInterval> | null = null;
   private count: number;
+  private connectedAt = 0;
 
   constructor(
     lat: number,
@@ -69,6 +70,7 @@ export class MockAISService {
   }
 
   connect() {
+    this.connectedAt = Date.now();
     this.generateInitialVessels();
     this.onUpdate(new Map(this.vessels));
 
@@ -144,19 +146,21 @@ export class MockAISService {
 
   getStats(): AISDebugStats {
     let withType = 0;
-    let without = 0;
+    let typeZero = 0;
     const shipTypeCounts: Record<number, number> = {};
     for (const v of this.vessels.values()) {
       if (v.shipType && v.shipType > 0) withType++;
-      else without++;
+      else typeZero++;
       shipTypeCounts[v.shipType] = (shipTypeCounts[v.shipType] ?? 0) + 1;
     }
     return {
       totalMessages: 0,
+      connectedSince: this.interval ? this.connectedAt : undefined,
       messageCounts: { "(demo mode — no live messages)": this.vessels.size },
       shipTypeCounts,
       vesselsWithType: withType,
-      vesselsWithoutType: without,
+      vesselsTypeZero: typeZero,
+      vesselsNoStaticYet: 0,
     };
   }
 }

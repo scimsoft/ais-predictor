@@ -23,16 +23,22 @@ interface PositionFields {
 export interface AISDebugStats {
   // Total raw messages received from the websocket
   totalMessages: number;
+  // When the WebSocket most recently transitioned to OPEN. Used to compute
+  // uptime + msgs/sec so we can tell whether the connection is healthy or
+  // being throttled by the browser.
+  connectedSince?: number;
   // Counts keyed by AISstream's MessageType discriminator
   // (e.g. PositionReport, ShipStaticData, StandardClassBPositionReport, …)
   messageCounts: Record<string, number>;
-  // Distribution of every distinct ship-type code observed (after a static
-  // data message OR an inline Type from ExtendedClassBPositionReport)
+  // Distribution of every distinct *valid* ship-type code observed. Only
+  // includes codes that came from a message that actually carried type
+  // information — Part A StaticDataReport messages (ShipType field absent
+  // or invalid) are excluded.
   shipTypeCounts: Record<number, number>;
-  // Vessels currently tracked, broken down by whether we have a non-zero
-  // ship type for them yet.
-  vesselsWithType: number;
-  vesselsWithoutType: number;
+  // Tracked-vessel breakdown
+  vesselsWithType: number; //  shipType > 0
+  vesselsTypeZero: number; //  static data received but Type=0 ("Not available")
+  vesselsNoStaticYet: number; //  no usable static-data message received yet
   // The most recent raw message text (truncated) for at-a-glance inspection
   lastRawSample?: string;
   lastSampleAt?: number;
